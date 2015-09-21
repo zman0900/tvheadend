@@ -57,9 +57,9 @@ api_channel_list
     if (!cfg && !channel_access(ch, perm, 0)) continue;
     if (!ch->ch_enabled) {
       snprintf(buf, sizeof(buf), "{%s}", channel_get_name(ch));
-      api_channel_key_val(l, idnode_uuid_as_str(&ch->ch_id), buf);
+      api_channel_key_val(l, idnode_uuid_as_sstr(&ch->ch_id), buf);
     } else {
-      api_channel_key_val(l, idnode_uuid_as_str(&ch->ch_id), channel_get_name(ch));
+      api_channel_key_val(l, idnode_uuid_as_sstr(&ch->ch_id), channel_get_name(ch));
     }
   }
   pthread_mutex_unlock(&global_lock);
@@ -110,15 +110,17 @@ api_channel_tag_list
   char buf[128];
 
   l = htsmsg_create_list();
+  pthread_mutex_lock(&global_lock);
   TAILQ_FOREACH(ct, &channel_tags, ct_link)
     if (cfg || channel_tag_access(ct, perm, 0)) {
       if (ct->ct_enabled) {
-        api_channel_key_val(l, idnode_uuid_as_str(&ct->ct_id), ct->ct_name);
+        api_channel_key_val(l, idnode_uuid_as_sstr(&ct->ct_id), ct->ct_name);
       } else {
         snprintf(buf, sizeof(buf), "{%s}", ct->ct_name);
-        api_channel_key_val(l, idnode_uuid_as_str(&ct->ct_id), buf);
+        api_channel_key_val(l, idnode_uuid_as_sstr(&ct->ct_id), buf);
       }
     }
+  pthread_mutex_unlock(&global_lock);
   *resp = htsmsg_create_map();
   htsmsg_add_msg(*resp, "entries", l);
   return 0;

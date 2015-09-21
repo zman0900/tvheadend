@@ -1,5 +1,5 @@
 /*
- *  API - SAT>IP Server related calls
+ *  API - General configuration related calls
  *
  *  Copyright (C) 2015 Jaroslav Kysela
  *
@@ -21,27 +21,27 @@
 #include "channels.h"
 #include "access.h"
 #include "api.h"
-#include "satip/server.h"
+#include "config.h"
 
-#if ENABLE_SATIP_SERVER
+static int
+api_config_capabilities(access_t *perm, void *opaque, const char *op,
+                        htsmsg_t *args, htsmsg_t **resp)
+{
+    *resp = tvheadend_capabilities_list(0);
+    return 0;
+}
 
 void
-api_satip_server_init ( void )
+api_config_init ( void )
 {
   static api_hook_t ah[] = {
-    { "satips/config/load", ACCESS_ADMIN, api_idnode_load_simple, &satip_server_conf },
-    { "satips/config/save", ACCESS_ADMIN, api_idnode_save_simple, &satip_server_conf },
+    { "config/capabilities", ACCESS_WEB_INTERFACE, api_config_capabilities, NULL },
+    { "config/load",         ACCESS_ADMIN, api_idnode_load_simple, &config },
+    { "config/save",         ACCESS_ADMIN, api_idnode_save_simple, &config },
+    { "tvhlog/config/load",  ACCESS_ADMIN, api_idnode_load_simple, &tvhlog_conf },
+    { "tvhlog/config/save",  ACCESS_ADMIN, api_idnode_save_simple, &tvhlog_conf },
     { NULL },
   };
 
   api_register_all(ah);
 }
-
-#else /* ENABLE_SATIP_SERVER */
-
-void 
-api_satip_server_init ( void )
-{
-}
-
-#endif

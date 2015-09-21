@@ -363,7 +363,7 @@ opentv_parse_event_section_one
     if (ev.serieslink) {
       char suri[257];
       snprintf(suri, 256, "opentv://channel-%s/series-%d",
-               channel_get_uuid(ch), ev.serieslink);
+               channel_get_suuid(ch), ev.serieslink);
       if ((es = epg_serieslink_find_by_uri(suri, 1, &save)))
         save |= epg_broadcast_set_serieslink(ebc, es, src);
     }
@@ -563,8 +563,8 @@ opentv_table_callback
   /* Statistics */
   ths = mpegts_mux_find_subscription_by_name(mt->mt_mux, "epggrab");
   if (ths) {
-    ths->ths_bytes_in += len;
-    ths->ths_bytes_out += len;
+    subscription_add_bytes_in(ths, len);
+    subscription_add_bytes_out(ths, len);
   }
 
 
@@ -642,8 +642,8 @@ opentv_bat_callback
   /* Statistics */
   ths = mpegts_mux_find_subscription_by_name(mt->mt_mux, "epggrab");
   if (ths) {
-    ths->ths_bytes_in += len;
-    ths->ths_bytes_out += len;
+    subscription_add_bytes_in(ths, len);
+    subscription_add_bytes_out(ths, len);
   }
 
   r = dvb_bat_callback(mt, buf, len, tableid);

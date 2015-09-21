@@ -193,6 +193,7 @@ I18N-C += $(SRCS-SATIP-SERVER)
 
 SRCS-2 = \
 	src/api.c \
+	src/api/api_config.c \
 	src/api/api_status.c \
 	src/api/api_idnode.c \
 	src/api/api_input.c \
@@ -210,12 +211,14 @@ SRCS-2 = \
 	src/api/api_profile.c \
 	src/api/api_bouquet.c \
 	src/api/api_language.c \
-	src/api/api_satip.c
+	src/api/api_satip.c \
+	src/api/api_timeshift.c
 
 SRCS-2 += \
 	src/parsers/parsers.c \
 	src/parsers/bitstream.c \
 	src/parsers/parser_h264.c \
+	src/parsers/parser_hevc.c \
 	src/parsers/parser_latm.c \
 	src/parsers/parser_avc.c \
 	src/parsers/parser_teletext.c \

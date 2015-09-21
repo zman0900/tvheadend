@@ -31,19 +31,13 @@
 #include <sys/stat.h>
 
 #include "tvheadend.h"
-#include "access.h"
 #include "http.h"
+#include "tcp.h"
 #include "webui.h"
 #include "dvr/dvr.h"
 #include "filebundle.h"
 #include "streaming.h"
-#include "profile.h"
-#include "epg.h"
-#include "muxer.h"
 #include "imagecache.h"
-#include "tcp.h"
-#include "config.h"
-#include "atomic.h"
 #include "lang_codes.h"
 #include "intlconv.h"
 #if ENABLE_MPEGTS
@@ -81,9 +75,14 @@ static int webui_xspf;
 static int
 http_channel_playlist_cmp(const void *a, const void *b)
 {
+  int r;
   channel_t *c1 = *(channel_t **)a, *c2 = *(channel_t **)b;
-  int r = channel_get_number(c1) - channel_get_number(c2);
-  if (r == 0)
+  int64_t n1 = channel_get_number(c1), n2 = channel_get_number(c2);
+  if (n1 > n2)
+    r = 1;
+  else if (n1 < n2)
+    r = -1;
+  else
     r = strcasecmp(channel_get_name(c1), channel_get_name(c2));
   return r;
 }
@@ -138,8 +137,24 @@ page_root(http_connection_t *hc, const char *remain, void *opaque)
 static int
 page_root2(http_connection_t *hc, const char *remain, void *opaque)
 {
-  if (!tvheadend_webroot) return 1;
-  http_redirect(hc, "/", &hc->hc_req_args, 0);
+  size_t l;
+  char *s;
+
+  /* not found checks */
+  if (!tvheadend_webroot)
+    return HTTP_STATUS_NOT_FOUND;
+  l = strlen(tvheadend_webroot);
+  if (strncmp(hc->hc_url, tvheadend_webroot, l) == 0 &&
+      hc->hc_url[l] == '/')
+    return HTTP_STATUS_NOT_FOUND;
+
+  /* redirect if url is not in the specified webroot */
+  if (!remain)
+    remain = "";
+  s = alloca(2 + strlen(remain));
+  s[0] = '/';
+  strcpy(s + 1, remain);
+  http_redirect(hc, s, &hc->hc_req_args, 0);
   return 0;
 }
 
@@ -349,7 +364,7 @@ http_stream_run(http_connection_t *hc, profile_chain_t *prch,
           pb = ((th_pkt_t*)sm->sm_data)->pkt_payload;
         else
           pb = sm->sm_data;
-        atomic_add(&s->ths_bytes_out, pktbuf_len(pb));
+        subscription_add_bytes_out(s, pktbuf_len(pb));
         muxer_write_pkt(mux, sm->sm_type, sm->sm_data);
         sm->sm_data = NULL;
       }
@@ -790,7 +805,7 @@ http_dvr_list_playlist(http_connection_t *hc, int pltype)
     htsbuf_qprintf(hq, "#EXTINF:%"PRItime_t",%s\n", durration, lang_str_get(de->de_title, NULL));
     
     htsbuf_qprintf(hq, "#EXT-X-TARGETDURATION:%"PRItime_t"\n", durration);
-    uuid = idnode_uuid_as_str(&de->de_id);
+    uuid = idnode_uuid_as_sstr(&de->de_id);
     htsbuf_qprintf(hq, "#EXT-X-STREAM-INF:PROGRAM-ID=%s,BANDWIDTH=%d\n", uuid, bandwidth);
     htsbuf_qprintf(hq, "#EXT-X-PROGRAM-DATE-TIME:%s\n", buf);
 
@@ -841,7 +856,7 @@ http_dvr_playlist(http_connection_t *hc, int pltype, dvr_entry_t *de)
     htsbuf_qprintf(hq, "#EXTINF:%"PRItime_t",%s\n", durration, lang_str_get(de->de_title, NULL));
     
     htsbuf_qprintf(hq, "#EXT-X-TARGETDURATION:%"PRItime_t"\n", durration);
-    uuid = idnode_uuid_as_str(&de->de_id);
+    uuid = idnode_uuid_as_sstr(&de->de_id);
     htsbuf_qprintf(hq, "#EXT-X-STREAM-INF:PROGRAM-ID=%s,BANDWIDTH=%d\n", uuid, bandwidth);
     htsbuf_qprintf(hq, "#EXT-X-PROGRAM-DATE-TIME:%s\n", buf);
 
@@ -1500,8 +1515,8 @@ page_dvrfile(http_connection_t *hc, const char *remain, void *opaque)
       }
       content_len -= r;
       if (sub) {
-        sub->ths_bytes_in += r;
-        sub->ths_bytes_out += r;
+        subscription_add_bytes_in(sub, r);
+        subscription_add_bytes_out(sub, r);
       }
     }
   }
@@ -1668,12 +1683,18 @@ int page_statedump(http_connection_t *hc, const char *remain, void *opaque);
 void
 webui_init(int xspf)
 {
+  const char *s;
+
   webui_xspf = xspf;
 
   if (tvheadend_webui_debug)
     tvhlog(LOG_INFO, "webui", "Running web interface in debug mode");
 
+  s = tvheadend_webroot;
+  tvheadend_webroot = NULL;
   http_path_add("", NULL, page_root2, ACCESS_WEB_INTERFACE);
+  tvheadend_webroot = s;
+
   http_path_add("/", NULL, page_root, ACCESS_WEB_INTERFACE);
   http_path_add("/login", NULL, page_login, ACCESS_WEB_INTERFACE);
   http_path_add("/logout", NULL, page_logout, ACCESS_WEB_INTERFACE);

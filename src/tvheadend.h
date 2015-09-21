@@ -53,6 +53,8 @@
 
 #if ENABLE_ANDROID
 #define S_IEXEC S_IXUSR
+#define epoll_create1(EPOLL_CLOEXEC) epoll_create(n)
+#define inotify_init1(IN_CLOEXEC) inotify_init()
 #include <time64.h>
 // 32-bit Android has only timegm64() and not timegm().
 // We replicate the behaviour of timegm() when the result overflows time_t.
@@ -78,19 +80,7 @@ extern const char      *tvheadend_cwd;
 extern const char      *tvheadend_webroot;
 extern const tvh_caps_t tvheadend_capabilities[];
 
-static inline htsmsg_t *tvheadend_capabilities_list(int check)
-{
-  int i = 0;
-  htsmsg_t *r = htsmsg_create_list();
-  while (tvheadend_capabilities[i].name) {
-    if (!check ||
-        !tvheadend_capabilities[i].enabled ||
-        *tvheadend_capabilities[i].enabled)
-      htsmsg_add_str(r, NULL, tvheadend_capabilities[i].name);
-    i++;
-  }
-  return r;
-}
+htsmsg_t *tvheadend_capabilities_list(int check);
 
 typedef struct str_list
 {
@@ -752,6 +742,8 @@ char *url_encode(char *str);
 int mpegts_word_count(const uint8_t *tsb, int len, uint32_t mask);
 
 int deferred_unlink(const char *filename, const char *rootdir);
+
+void sha1_calc(uint8_t *dst, const uint8_t *d1, size_t d1_len, const uint8_t *d2, size_t d2_len);
 
 static inline int32_t deltaI32(int32_t a, int32_t b) { return (a > b) ? (a - b) : (b - a); }
 static inline uint32_t deltaU32(uint32_t a, uint32_t b) { return (a > b) ? (a - b) : (b - a); }
