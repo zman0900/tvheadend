@@ -121,7 +121,7 @@ _psip_eit_callback
 
   /* Register this */
   if (ota)
-    epggrab_ota_service_add(map, ota, idnode_uuid_as_str(&svc->s_id), 1);
+    epggrab_ota_service_add(map, ota, idnode_uuid_as_sstr(&svc->s_id), 1);
 
   /* No point processing */
   if (!LIST_FIRST(&svc->s_channels))
